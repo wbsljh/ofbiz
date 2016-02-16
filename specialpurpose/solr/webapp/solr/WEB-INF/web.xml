@@ -15,7 +15,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-<web-app>
+<web-app version="3.0">
+
 
     <display-name>Apache OFBiz - Solr Component</display-name>
     <description>Solr Component of the Apache OFBiz Project</description>
@@ -172,6 +173,11 @@
   
     <session-config>
         <session-timeout>2</session-timeout>
+        <cookie-config>
+          <http-only>true</http-only>
+          <secure>true</secure>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
     </session-config>
 
     <mime-mapping>

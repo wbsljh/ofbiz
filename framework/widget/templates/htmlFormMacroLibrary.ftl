@@ -69,8 +69,8 @@ under the License.
     require
   /><#t/>
   <#if ajaxEnabled?has_content && ajaxEnabled>
-    <#assign defaultMinLength = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.autocompleter.defaultMinLength")>
-    <#assign defaultDelay = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.autocompleter.defaultDelay")>
+    <#assign defaultMinLength = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.autocompleter.defaultMinLength", delegator)>
+    <#assign defaultDelay = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.autocompleter.defaultDelay", delegator)>
     <script language="JavaScript" type="text/javascript">ajaxAutoCompleter('${ajaxUrl}', false, ${defaultMinLength!2}, ${defaultDelay!300});</script><#lt/>
   </#if>
 </#macro>
@@ -116,8 +116,7 @@ under the License.
         <#if maxlength?has_content>  maxlength="${maxlength}"</#if>
         <#if id?has_content> id="${id}_i18n"</#if>/><#rt/>
     </#if>
-    <#-- the style attribute is a little bit messy but when using disply:none the timepicker is shown on a wrong place -->
-    <input type="text" <#if tabindex?has_content> tabindex="${tabindex}"</#if> name="${name}" style="height:1px;width:1px;border:none;background-color:transparent" <#if event?has_content && action?has_content> ${event}="${action}"</#if> <@renderClass className alert /><#rt/>
+    <input type="hidden" <#if tabindex?has_content> tabindex="${tabindex}"</#if> name="${name}" <#if event?has_content && action?has_content> ${event}="${action}"</#if> <@renderClass className alert /><#rt/>
       <#if title?has_content> title="${title}"</#if>
       <#if value?has_content> value="${value}"</#if>
       <#if size?has_content> size="${size}"</#if><#rt/>
@@ -641,7 +640,7 @@ Parameter: tabindex, String, optional - HTML tabindex number.
     <#local ajaxUrl = id + "," + ajaxUrl + ",ajaxLookup=Y" />
   </#if>
   <#if (!showDescription?has_content)>
-    <#local showDescriptionProp = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.lookup.showDescription", "N")>
+    <#local showDescriptionProp = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.lookup.showDescription", "N", delegator)>
     <#if "Y" == showDescriptionProp>
       <#local showDescription = "true" />
     <#else>
@@ -649,13 +648,13 @@ Parameter: tabindex, String, optional - HTML tabindex number.
     </#if>
   </#if>
   <#if (!position?has_content)>
-    <#local position = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.lookup.position", "topleft")>
+    <#local position = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.lookup.position", "topleft", delegator)>
   </#if>
   <#if (!width?has_content)>
-    <#local width = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.lookup.width", "620")>
+    <#local width = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.lookup.width", "620", delegator)>
   </#if>
   <#if (!height?has_content)>
-    <#local height = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.lookup.height", "500")>
+    <#local height = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.lookup.height", "500", delegator)>
   </#if>
   <#if ajaxEnabled?has_content && ajaxEnabled>
     <script type="text/javascript">
@@ -692,8 +691,8 @@ Parameter: tabindex, String, optional - HTML tabindex number.
       );"></a><#rt>
     <#else>
       <#if ajaxEnabled?has_content && ajaxEnabled>
-        <#assign defaultMinLength = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.autocompleter.defaultMinLength")>
-        <#assign defaultDelay = Static["org.ofbiz.base.util.UtilProperties"].getPropertyValue("widget.properties", "widget.autocompleter.defaultDelay")>
+        <#assign defaultMinLength = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.autocompleter.defaultMinLength", delegator)>
+        <#assign defaultDelay = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.autocompleter.defaultDelay", delegator)>
         <#local ajaxUrl = ajaxUrl + "&amp;_LAST_VIEW_NAME_=" + lastViewName />
         <#if !ajaxUrl?contains("searchValueFieldName=")>
           <#if descriptionFieldName?has_content && showDescription == "true">
@@ -869,7 +868,7 @@ Parameter: tabindex, String, optional - HTML tabindex number.
     <#if confirmation?has_content> onclick="return confirm('${confirmation?js_string}')"</#if>>
       <#if imgSrc?has_content><img src="${imgSrc}" alt=""/></#if>${description}</a>
 </#macro>
-<#macro makeHyperlinkString linkStyle hiddenFormName event action imgSrc title alternate linkUrl targetWindow description confirmation uniqueItemName="" height="" width="" id="">
+<#macro makeHyperlinkString linkStyle hiddenFormName event action imgSrc title targetParameters alternate linkUrl targetWindow description confirmation uniqueItemName="" height="" width="" id="">
     <#if uniqueItemName?has_content>
         <div id="${uniqueItemName}"></div>
         <a href="javascript:void(0);" id="${uniqueItemName}_link" 
@@ -877,10 +876,14 @@ Parameter: tabindex, String, optional - HTML tabindex number.
         <#if description?has_content>${description}</#if></a>
         <script type="text/javascript">
             function ${uniqueItemName}_data () {
-                var data =  {
-                    <#--list parameterList as parameter>
-                        "${parameter.name}": "${parameter.value}",
-                    </#list-->
+                var data = {
+                <#if targetParameters?has_content>
+                    <#assign parameterMap = targetParameters?eval>
+                    <#assign parameterKeys = parameterMap?keys>
+                    <#list parameterKeys as key>
+                    "${key}": "${parameterMap[key]}",
+                    </#list>
+                </#if>
                     "presentation": "layer"
                 };
                 return data;

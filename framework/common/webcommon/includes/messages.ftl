@@ -49,7 +49,12 @@ under the License.
       </#if>
     </div>
   </#if>
-    <script>showjGrowl();</script>
+  <#assign jGrowlPosition = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.position", delegator)>
+  <#assign jGrowlWidth = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.width", delegator)>
+  <#assign jGrowlHeight = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.height", delegator)>
+  <#assign jGrowlSpeed = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.speed", delegator)>
+  
+  <script>showjGrowl("${uiLabelMap.CommonShowAll}","${uiLabelMap.CommonCollapse}", "${uiLabelMap.CommonHideAllNotifications}", "${jGrowlPosition}", "${jGrowlWidth}", "${jGrowlHeight}", "${jGrowlSpeed}");</script>
   <#-- display the event messages -->
   <#if (eventMessage?has_content || eventMessageList?has_content)>
     <div id="content-messages" class="content-messages eventMessage" onclick="document.getElementById('content-messages').parentNode.removeChild(this)">
@@ -63,6 +68,10 @@ under the License.
         </#list>
       </#if>
     </div>
-    <script>showjGrowl();</script>
+    <#assign jGrowlPosition = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.position", delegator)>
+    <#assign jGrowlWidth = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.width", delegator)>
+    <#assign jGrowlHeight = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.height", delegator)>
+    <#assign jGrowlSpeed = Static["org.ofbiz.entity.util.EntityUtilProperties"].getPropertyValue("widget", "widget.jgrowl.speed", delegator)>
+    <script>showjGrowl("${uiLabelMap.CommonShowAll}","${uiLabelMap.CommonCollapse}", "${uiLabelMap.CommonHideAllNotifications}", "${jGrowlPosition}", "${jGrowlWidth}", "${jGrowlHeight}", "${jGrowlSpeed}");</script>
   </#if>
 </#escape>

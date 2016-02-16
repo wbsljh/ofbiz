@@ -19,11 +19,7 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-<web-app version="3.0"
-         xmlns="http://java.sun.com/xml/ns/javaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
-                             http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+<web-app version="3.0">
     <display-name>Apache OFBiz - Manufacturing Manager</display-name>
     <description>Manufacturing Manager Module by TAU Informatica srl</description>
 
@@ -74,9 +70,9 @@ under the License.
     <!-- <listener><listener-class>org.ofbiz.webapp.control.ControlActivationEventListener</listener-class></listener> -->
 
     <servlet>
+        <description>Main Control Servlet</description>
         <display-name>ControlServlet</display-name>
         <servlet-name>ControlServlet</servlet-name>
-        <description>Main Control Servlet</description>
         <servlet-class>org.ofbiz.webapp.control.ControlServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
     </servlet>

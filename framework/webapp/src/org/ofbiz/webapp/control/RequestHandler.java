@@ -74,10 +74,8 @@ public class RequestHandler {
     private final ViewFactory viewFactory;
     private final EventFactory eventFactory;
     private final URL controllerConfigURL;
-    private final boolean forceHttpSession;
     private final boolean trackServerHit;
     private final boolean trackVisit;
-    private final boolean cookies;
     private final String charset;
 
     public static RequestHandler getRequestHandler(ServletContext servletContext) {
@@ -101,10 +99,8 @@ public class RequestHandler {
         this.viewFactory = new ViewFactory(context, this.controllerConfigURL);
         this.eventFactory = new EventFactory(context, this.controllerConfigURL);
 
-        this.forceHttpSession = "true".equalsIgnoreCase(context.getInitParameter("forceHttpSession"));
         this.trackServerHit = !"false".equalsIgnoreCase(context.getInitParameter("track-serverhit"));
         this.trackVisit = !"false".equalsIgnoreCase(context.getInitParameter("track-visit"));
-        this.cookies = !"false".equalsIgnoreCase(context.getInitParameter("cookies"));
         this.charset = context.getInitParameter("charset");
     }
 
@@ -129,7 +125,7 @@ public class RequestHandler {
             GenericValue userLogin, Delegator delegator) throws RequestHandlerException, RequestHandlerExceptionAllowExternalRequests {
 
         final boolean throwRequestHandlerExceptionOnMissingLocalRequest = EntityUtilProperties.propertyValueEqualsIgnoreCase(
-                "requestHandler.properties", "throwRequestHandlerExceptionOnMissingLocalRequest", "Y", delegator);
+                "requestHandler", "throwRequestHandlerExceptionOnMissingLocalRequest", "Y", delegator);
         long startTime = System.currentTimeMillis();
         HttpSession session = request.getSession();
 
@@ -232,7 +228,7 @@ public class RequestHandler {
                 // not using _POST_CHAIN_VIEW_ because it shouldn't be set unless the event execution is successful
                 request.setAttribute("_CURRENT_CHAIN_VIEW_", overrideViewUri);
             }
-            if (Debug.infoOn()) Debug.logInfo("[RequestHandler]: Chain in place: requestUri=" + chainRequestUri + " overrideViewUri=" + overrideViewUri + " sessionId=" + UtilHttp.getSessionId(request), module);
+            if (Debug.infoOn()) Debug.logInfo("[RequestHandler]: Chain in place: requestUri=" + chainRequestUri + " overrideViewUri=" + overrideViewUri + showSessionId(request), module);
         } else {
             // Check if X509 is required and we are not secure; throw exception
             if (!request.isSecure() && requestMap.securityCert) {
@@ -300,20 +296,6 @@ public class RequestHandler {
                         return;
                     }
                 }
-            // if this is a new session and forceHttpSession is true and the request is secure but does not
-            // need to be then we need the session cookie to be created via an http response (rather than https)
-            // so we'll redirect to an unsecure request
-            } else if (forceHttpSession && request.isSecure() && session.isNew() && !requestMap.securityHttps) {
-                StringBuilder urlBuf = new StringBuilder();
-                urlBuf.append(request.getPathInfo());
-                if (request.getQueryString() != null) {
-                    urlBuf.append("?").append(request.getQueryString());
-                }
-                String newUrl = RequestHandler.makeUrl(request, response, urlBuf.toString(), true, false, false);
-                if (newUrl.toUpperCase().startsWith("HTTP")) {
-                    callRedirect(newUrl, response, request, statusCodeString);
-                    return;
-                }
             }
 
             // Check for HTTPS client (x.509) security
@@ -353,7 +335,7 @@ public class RequestHandler {
             // If its the first visit run the first visit events.
             if (this.trackVisit(request) && session.getAttribute("_FIRST_VISIT_EVENTS_") == null) {
                 if (Debug.infoOn())
-                    Debug.logInfo("This is the first request in this visit." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                    Debug.logInfo("This is the first request in this visit." + showSessionId(request), module);
                 session.setAttribute("_FIRST_VISIT_EVENTS_", "complete");
                 try {
                     for (ConfigXMLReader.Event event: controllerConfig.getFirstVisitEventList().values()) {
@@ -418,11 +400,11 @@ public class RequestHandler {
         // Pre-Processor/First-Visit event(s) can interrupt the flow by returning null.
         // Warning: this could cause problems if more then one event attempts to return a response.
         if (interruptRequest) {
-            if (Debug.infoOn()) Debug.logInfo("[Pre-Processor Interrupted Request, not running: [" + requestMap.uri + "], sessionId=" + UtilHttp.getSessionId(request), module);
+            if (Debug.infoOn()) Debug.logInfo("[Pre-Processor Interrupted Request, not running: [" + requestMap.uri + "]. " + showSessionId(request), module);
             return;
         }
 
-        if (Debug.verboseOn()) Debug.logVerbose("[Processing Request]: " + requestMap.uri + " sessionId=" + UtilHttp.getSessionId(request), module);
+        if (Debug.verboseOn()) Debug.logVerbose("[Processing Request]: " + requestMap.uri + showSessionId(request), module);
         request.setAttribute("thisRequestUri", requestMap.uri); // store the actual request URI
 
 
@@ -430,7 +412,7 @@ public class RequestHandler {
         if (requestMap.securityAuth) {
             // Invoke the security handler
             // catch exceptions and throw RequestHandlerException if failed.
-            if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler]: AuthRequired. Running security check. sessionId=" + UtilHttp.getSessionId(request), module);
+            if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler]: AuthRequired. Running security check. " + showSessionId(request), module);
             ConfigXMLReader.Event checkLoginEvent = requestMapMap.get("checkLogin").event;
             String checkLoginReturnString = null;
 
@@ -516,7 +498,7 @@ public class RequestHandler {
         }
         if (eventReturnBasedRequestResponse != null) {
             //String eventReturnBasedResponse = requestResponse.value;
-            if (Debug.verboseOn()) Debug.logVerbose("[Response Qualified]: " + eventReturnBasedRequestResponse.name + ", " + eventReturnBasedRequestResponse.type + ":" + eventReturnBasedRequestResponse.value + " sessionId=" + UtilHttp.getSessionId(request), module);
+            if (Debug.verboseOn()) Debug.logVerbose("[Response Qualified]: " + eventReturnBasedRequestResponse.name + ", " + eventReturnBasedRequestResponse.type + ":" + eventReturnBasedRequestResponse.value + showSessionId(request), module);
 
             // If error, then display more error messages:
             if ("error".equals(eventReturnBasedRequestResponse.name)) {
@@ -562,7 +544,7 @@ public class RequestHandler {
             }
         }
 
-        if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler]: previousRequest - " + previousRequest + " (" + loginPass + ")" + " sessionId=" + UtilHttp.getSessionId(request), module);
+        if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler]: previousRequest - " + previousRequest + " (" + loginPass + ")" + showSessionId(request), module);
 
         // if previous request exists, and a login just succeeded, do that now.
         if (previousRequest != null && loginPass != null && loginPass.equalsIgnoreCase("TRUE")) {
@@ -571,7 +553,7 @@ public class RequestHandler {
             if ("logout".equals(previousRequest) || "/logout".equals(previousRequest) || "login".equals(previousRequest) || "/login".equals(previousRequest) || "checkLogin".equals(previousRequest) || "/checkLogin".equals(previousRequest) || "/checkLogin/login".equals(previousRequest)) {
                 Debug.logWarning("Found special _PREVIOUS_REQUEST_ of [" + previousRequest + "], setting to null to avoid problems, not running request again", module);
             } else {
-                if (Debug.infoOn()) Debug.logInfo("[Doing Previous Request]: " + previousRequest + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.infoOn()) Debug.logInfo("[Doing Previous Request]: " + previousRequest + showSessionId(request), module);
 
                 // note that the previous form parameters are not setup (only the URL ones here), they will be found in the session later and handled when the old request redirect comes back
                 Map<String, Object> previousParamMap = UtilGenerics.checkMap(request.getSession().getAttribute("_PREVIOUS_PARAM_MAP_URL_"), String.class, Object.class);
@@ -582,10 +564,6 @@ public class RequestHandler {
                 }
                 
                 callRedirect(makeLink(request, response, redirectTarget), response, request, statusCodeString);
-
-                // the old/uglier way: doRequest(request, response, previousRequest, userLogin, delegator);
-
-                // this is needed as the request handled will be taking care of the view, etc
                 return;
             }
         }
@@ -606,7 +584,7 @@ public class RequestHandler {
             throw new RequestHandlerException("Illegal response; handler could not process request [" + requestMap.uri + "] and event return [" + eventReturn + "].");
         }
 
-        if (Debug.verboseOn()) Debug.logVerbose("[Event Response Selected]  type=" + nextRequestResponse.type + ", value=" + nextRequestResponse.value + ", sessionId=" + UtilHttp.getSessionId(request), module);
+        if (Debug.verboseOn()) Debug.logVerbose("[Event Response Selected]  type=" + nextRequestResponse.type + ", value=" + nextRequestResponse.value + ". " + showSessionId(request), module);
 
         // ========== Handle the responses - chains/views ==========
 
@@ -626,7 +604,7 @@ public class RequestHandler {
 
         if ("request".equals(nextRequestResponse.type)) {
             // chained request
-            Debug.logInfo("[RequestHandler.doRequest]: Response is a chained request." + " sessionId=" + UtilHttp.getSessionId(request), module);
+            Debug.logInfo("[RequestHandler.doRequest]: Response is a chained request." + showSessionId(request), module);
             doRequest(request, response, nextRequestResponse.value, userLogin, delegator);
         } else {
             // ======== handle views ========
@@ -654,27 +632,27 @@ public class RequestHandler {
             
             
             if ("url".equals(nextRequestResponse.type)) {
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a URL redirect." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a URL redirect." + showSessionId(request), module);
                 callRedirect(nextRequestResponse.value, response, request, statusCodeString);
             } else if ("cross-redirect".equals(nextRequestResponse.type)) {
                 // check for a cross-application redirect
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a Cross-Application redirect." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a Cross-Application redirect." + showSessionId(request), module);
                 String url = nextRequestResponse.value.startsWith("/") ? nextRequestResponse.value : "/" + nextRequestResponse.value;
                 callRedirect(url + this.makeQueryString(request, nextRequestResponse), response, request, statusCodeString);
             } else if ("request-redirect".equals(nextRequestResponse.type)) {
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a Request redirect." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a Request redirect." + showSessionId(request), module);
                 callRedirect(makeLinkWithQueryString(request, response, "/" + nextRequestResponse.value, nextRequestResponse), response, request, statusCodeString);
             } else if ("request-redirect-noparam".equals(nextRequestResponse.type)) {
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a Request redirect with no parameters." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a Request redirect with no parameters." + showSessionId(request), module);
                 callRedirect(makeLink(request, response, nextRequestResponse.value), response, request, statusCodeString);
             } else if ("view".equals(nextRequestResponse.type)) {
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + showSessionId(request), module);
 
                 // check for an override view, only used if "success" = eventReturn
                 String viewName = (UtilValidate.isNotEmpty(overrideViewUri) && (eventReturn == null || "success".equals(eventReturn))) ? overrideViewUri : nextRequestResponse.value;
                 renderView(viewName, requestMap.securityExternalView, request, response, saveName);
             } else if ("view-last".equals(nextRequestResponse.type)) {
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + showSessionId(request), module);
 
                 // check for an override view, only used if "success" = eventReturn
                 String viewName = (UtilValidate.isNotEmpty(overrideViewUri) && (eventReturn == null || "success".equals(eventReturn))) ? overrideViewUri : nextRequestResponse.value;
@@ -708,7 +686,7 @@ public class RequestHandler {
                 }
                 renderView(viewName, requestMap.securityExternalView, request, response, null);
             } else if ("view-last-noparam".equals(nextRequestResponse.type)) {
-                 if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                 if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + showSessionId(request), module);
 
                  // check for an override view, only used if "success" = eventReturn
                  String viewName = (UtilValidate.isNotEmpty(overrideViewUri) && (eventReturn == null || "success".equals(eventReturn))) ? overrideViewUri : nextRequestResponse.value;
@@ -725,7 +703,7 @@ public class RequestHandler {
                  }
                  renderView(viewName, requestMap.securityExternalView, request, response, null);
             } else if ("view-home".equals(nextRequestResponse.type)) {
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is a view." + showSessionId(request), module);
 
                 // check for an override view, only used if "success" = eventReturn
                 String viewName = (UtilValidate.isNotEmpty(overrideViewUri) && (eventReturn == null || "success".equals(eventReturn))) ? overrideViewUri : nextRequestResponse.value;
@@ -744,7 +722,7 @@ public class RequestHandler {
                 renderView(viewName, requestMap.securityExternalView, request, response, null);
             } else if ("none".equals(nextRequestResponse.type)) {
                 // no view to render (meaning the return was processed by the event)
-                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is handled by the event." + " sessionId=" + UtilHttp.getSessionId(request), module);
+                if (Debug.verboseOn()) Debug.logVerbose("[RequestHandler.doRequest]: Response is handled by the event." + showSessionId(request), module);
             }
         }
         if (originalRequestMap.metrics != null) {
@@ -828,7 +806,7 @@ public class RequestHandler {
     }
 
     private void callRedirect(String url, HttpServletResponse resp, HttpServletRequest req, String statusCodeString) throws RequestHandlerException {
-        if (Debug.infoOn()) Debug.logInfo("Sending redirect to: [" + url + "], sessionId=" + UtilHttp.getSessionId(req), module);
+        if (Debug.infoOn()) Debug.logInfo("Sending redirect to: [" + url + "]. " + showSessionId(req), module);
         // set the attributes in the session so we can access it.
         Enumeration<String> attributeNameEnum = UtilGenerics.cast(req.getAttributeNames());
         Map<String, Object> reqAttrMap = new HashMap<String, Object>();
@@ -880,13 +858,13 @@ public class RequestHandler {
             servletName = servletName.substring(1);
         }
         
-        if (Debug.infoOn()) Debug.logInfo("Rendering View [" + view + "], sessionId=" + UtilHttp.getSessionId(req), module);
+        if (Debug.infoOn()) Debug.logInfo("Rendering View [" + view + "]. " + showSessionId(req), module);
         if (view.startsWith(servletName + "/")) {
             view = view.substring(servletName.length() + 1);
             if (Debug.infoOn()) Debug.logInfo("a manual control servlet request was received, removing control servlet path resulting in: view=" + view, module);
         }
 
-        if (Debug.verboseOn()) Debug.logVerbose("[Getting View Map]: " + view + " sessionId=" + UtilHttp.getSessionId(req), module);
+        if (Debug.verboseOn()) Debug.logVerbose("[Getting View Map]: " + view + showSessionId(req), module);
 
         // before mapping the view, set a request attribute so we know where we are
         req.setAttribute("_CURRENT_VIEW_", view);
@@ -941,7 +919,7 @@ public class RequestHandler {
             nextPage = viewMap.page;
         }
 
-        if (Debug.verboseOn()) Debug.logVerbose("[Mapped To]: " + nextPage + " sessionId=" + UtilHttp.getSessionId(req), module);
+        if (Debug.verboseOn()) Debug.logVerbose("[Mapped To]: " + nextPage + showSessionId(req), module);
 
         long viewStartTime = System.currentTimeMillis();
 
@@ -1000,7 +978,7 @@ public class RequestHandler {
                 resp.addHeader("strict-transport-security", strictTransportSecurity);
             }
         } else {
-            if (EntityUtilProperties.getPropertyAsBoolean("requestHandler", "strict-transport-security", true)) {
+            if (EntityUtilProperties.getPropertyAsBoolean("requestHandler", "strict-transport-security", true)) { // FIXME later pass req.getAttribute("delegator") as last argument
                 resp.addHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
             }
         }
@@ -1016,17 +994,6 @@ public class RequestHandler {
         // https://wiki.mozilla.org/Security/Features/XSS_Filter 
         // https://bugzilla.mozilla.org/show_bug.cgi?id=528661
         resp.addHeader("X-XSS-Protection","1; mode=block"); 
-        
-        String setCookie = resp.getHeader("set-cookie");
-        if (UtilValidate.isNotEmpty(setCookie)) {
-            setCookie = setCookie.toLowerCase();
-            if (!setCookie.contains("secure")) {
-            resp.setHeader("set-cookie", setCookie + "; secure;"); // Adds a ";" trail to be sure to separate things
-            }
-            if (!setCookie.contains("httponly")) {
-                resp.setHeader("set-cookie", setCookie + "; httponly;"); // Adds a ";" trail to be sure to separate things
-            }
-        }
 
         try {
             if (Debug.verboseOn()) Debug.logVerbose("Rendering view [" + nextPage + "] of type [" + viewMap.type + "]", module);
@@ -1241,53 +1208,10 @@ public class RequestHandler {
 
         String encodedUrl;
         if (encode) {
-            boolean forceManualJsessionid = !cookies;
-            boolean isSpider = false;
-
-            // if the current request comes from a spider, we will not add the jsessionid to the link
-            if (UtilHttp.checkURLforSpiders(request)) {
-                isSpider = true;
-            }
-
-            // if this isn't a secure page, but we made a secure URL, make sure we manually add the jsessionid since the response.encodeURL won't do that
-            if (!request.isSecure() && didFullSecure) {
-                forceManualJsessionid = true;
-            }
-
-            // if this is a secure page, but we made a standard URL, make sure we manually add the jsessionid since the response.encodeURL won't do that
-            if (request.isSecure() && didFullStandard) {
-                forceManualJsessionid = true;
-            }
-
-            if (response != null && !forceManualJsessionid && !isSpider) {
-                encodedUrl = response.encodeURL(newURL.toString());
-            } else {
-                if (!isSpider) {
-                    String sessionId = ";jsessionid=" + request.getSession().getId();
-                    // this should be inserted just after the "?" for the parameters, if there is one, or at the end of the string
-                    int questionIndex = newURL.indexOf("?");
-                    if (questionIndex == -1) {
-                        newURL.append(sessionId);
-                    } else {
-                        newURL.insert(questionIndex, sessionId);
-                    }
-                }
-                if (response != null) {
-                    encodedUrl = response.encodeURL(newURL.toString());
-                } else {
-                    encodedUrl = newURL.toString();
-                }
-            }
+            encodedUrl = response.encodeURL(newURL.toString());
         } else {
             encodedUrl = newURL.toString();
         }
-        //if (encodedUrl.indexOf("null") > 0) {
-            //Debug.logError("in makeLink, controlPath:" + controlPath + " url:" + url, "");
-            //throw new RuntimeException("in makeLink, controlPath:" + controlPath + " url:" + url);
-        //}
-
-        //Debug.logInfo("Making URL, encode=" + encode + " for URL: " + newURL + "\n encodedUrl: " + encodedUrl, module);
-
         return encodedUrl;
     }
 
@@ -1371,5 +1295,14 @@ public class RequestHandler {
         } else {
             return false;
         }
+    }
+    
+    private String showSessionId(HttpServletRequest request) {
+        Delegator delegator = (Delegator) request.getAttribute("delegator");
+        boolean showSessionIdInLog = EntityUtilProperties.propertyValueEqualsIgnoreCase("requestHandler", "show-sessionId-in-log", "Y", delegator);
+        if (showSessionIdInLog) {
+            return " sessionId=" + UtilHttp.getSessionId(request); 
+        }
+        return " Hidden sessionId by default.";
     }
 }

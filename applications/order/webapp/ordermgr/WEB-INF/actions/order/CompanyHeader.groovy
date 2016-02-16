@@ -44,11 +44,15 @@ fromPartyId = parameters.fromPartyId;
 
 if (!orderHeader && orderId) {
     orderHeader = from("OrderHeader").where("orderId", orderId).queryOne();
-    if (parameters.facilityId) {
-        UtilHttp.setContentDisposition(response, "PickSheet" + orderId + ".pdf");
-    } else {
-        UtilHttp.setContentDisposition(response, orderId + ".pdf");
-    }
+    try {
+        if (parameters.facilityId) {
+            UtilHttp.setContentDisposition(response, "PickSheet" + orderId + ".pdf");
+        } else {
+            UtilHttp.setContentDisposition(response, orderId + ".pdf");
+        }
+    } catch (MissingPropertyException e) {
+        // This hack for OFBIZ-6792 to avoid "groovy.lang.MissingPropertyException: No such property: response for class: CompanyHeader" when response does not exist (in sendOrderConfirmation service)
+    }    
 } else if (shipmentId) {
     shipment = from("Shipment").where("shipmentId", shipmentId).queryOne();
     orderHeader = shipment.getRelatedOne("PrimaryOrderHeader", false);
@@ -56,7 +60,11 @@ if (!orderHeader && orderId) {
 
 if (!invoice && invoiceId)    {
     invoice = from("Invoice").where("invoiceId", invoiceId).queryOne();
-    UtilHttp.setContentDisposition(response, invoiceId + ".pdf");
+    try {
+        UtilHttp.setContentDisposition(response, invoiceId + ".pdf");
+    } catch (MissingPropertyException e) {
+        // This hack for OFBIZ-6792 to avoid "groovy.lang.MissingPropertyException: No such property: response for class: CompanyHeader" when response does not exist (in sendOrderConfirmation service)
+    }    
 }
 
 if (!returnHeader && returnId) {
@@ -121,7 +129,7 @@ if (!partyId) {
     if (fromPartyId) {
         partyId = fromPartyId;
     } else {
-        partyId = EntityUtilProperties.getPropertyValue("general", "ORGANIZATION_PARTY", delegator);
+        partyId = parameters.get('ApplicationDecorator|organizationPartyId') ? parameters.get('ApplicationDecorator|organizationPartyId') : context.defaultOrganizationPartyId;
     }
 }
 
@@ -252,7 +260,7 @@ partyTaxAuthInfoList = from("PartyTaxAuthInfo").where("partyId", partyId)
                         .filterByDate(nowTimestamp, "fromDate", "thruDate")
                         .queryList();
 if (partyTaxAuthInfoList) {
-    if (address.countryGeoId) {
+    if (address?.countryGeoId) {
         // if we have an address with country filter by that
         partyTaxAuthInfoList.eachWithIndex { partyTaxAuthInfo, i ->
             if (partyTaxAuthInfo.taxAuthGeoId.equals(address.countryGeoId)) {

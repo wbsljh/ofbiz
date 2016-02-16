@@ -30,8 +30,8 @@ under the License.
 
     <import file="macros.xml"/>
     <property name="site.dir" value="../site"/>
-    <property name="memory.initial.param" value="-Xms128M"/>
-    <property name="memory.max.param" value="-Xmx512M"/>
+    <property name="memory.initial.param" value="-Xms512M"/>
+    <property name="memory.max.param" value="-Xmx1024M"/>
 
     <import file="framework/build.xml" optional="false"/>
     <available file="applications/build.xml" property="applications.present"/>

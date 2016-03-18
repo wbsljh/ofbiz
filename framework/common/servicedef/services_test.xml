@@ -47,15 +47,17 @@ under the License.
     <service name="testError" engine="java" export="true" validate="false" require-new-transaction="true" max-retry="1"
             location="org.ofbiz.common.CommonServices" invoke="returnErrorService">
     </service>
+    <!-- Because of the danger of Java deserialization when using RMI, we (PMC) have decided to comment out main RMI related code entries.
+         If you need RMI you just need to uncomment those places - See OFBIZ-6942 for details -->
     <!-- see serviceengine.xml to configure the rmi location alias -->
-    <service name="testRmi" engine="rmi" validate="false"
+    <!-- <service name="testRmi" engine="rmi" validate="false"
             location="main-rmi" invoke="testScv">
         <implements service="testScv"/>
     </service>
     <service name="testRmiFail" engine="rmi" validate="false"
             location="main-rmi" invoke="testBsh">
         <implements service="testScv"/>
-    </service>
+    </service> -->
 
     <service name="testRollback" engine="java" export="true" validate="false"
             location="org.ofbiz.common.CommonServices" invoke="testRollbackListener">
@@ -88,13 +90,17 @@ under the License.
         <implements service="testScv"/>
     </service>
 
+    <!--  test service for local loopback testing (OFBiz Client SOAP -> OFBiz Server SOAP)  
+        http://ofbiz-vm.apache.org:8080/webtools/control/SOAPService is the ultimate location for the testRemoteSoap 
+        (it's redirected from http://demo-trunk-ofbiz.apache.org/webtools/control/SOAPService by the SSL ASF proxy)
+        So this can be used only against trunk demo and is not in the tests set to avoid a dependency on Internet -->
     <service name="testRemoteSoap" engine="soap" export="true" 
-        location="http://demo-trunk.ofbiz.apache.org:8080/webtools/control/SOAPService"
+        location="http://ofbiz-vm.apache.org:8080/webtools/control/SOAPService"
         invoke="testSoapSimple">
         <attribute name="defaultValue" type="Double" mode="IN" default-value="999.9999"/>
         <attribute name="message" type="String" mode="IN" optional="true"/>
         <attribute name="resp" type="String" mode="OUT"/>
-    </service>    
+    </service>
 
     <!-- FIXME For now, not sure why, the 4 remote SOAP services below don't work -->
     
@@ -112,7 +118,7 @@ under the License.
         <attribute name="ZipCode" type="String" mode="IN"/>
         <attribute name="invoke" type="String" mode="IN" />
         <attribute name="result" type="String" mode="OUT"/>
-    </service>    
+    </service>
     
     <!-- the location = endpoint = SOAP action -->
     <!-- invoke parameter is the name of the operation to invoke, for example LatLonListCityNames -->
@@ -128,7 +134,7 @@ under the License.
         <attribute name="CityName" type="String" mode="IN"/>
         <attribute name="invoke" type="String" mode="IN" />
         <attribute name="result" type="String" mode="OUT"/>
-    </service>    
+    </service>
 
     <!-- FIXME For now, not sure why, this remote SOAP service does not work -->
     <service name="testRemoteSoap3" engine="soap" export="true"
@@ -137,7 +143,7 @@ under the License.
         <attribute name="ZipCode" type="String" mode="IN"/>
         <attribute name="invoke" type="String" mode="IN" />
         <attribute name="result" type="String" mode="OUT"/>
-    </service>    
+    </service>
     
     <!-- FIXME For now, not sure why, this remote SOAP service does not work -->
     <service name="testRemoteSoap4" engine="soap" export="true"
